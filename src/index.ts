@@ -1,69 +1,86 @@
-import {
-  IDisposable, DisposableDelegate
-} from '@lumino/disposable';
+const KEY = 'run_all_buttons';
+const PLUGIN_NAME = `@wallneradam/${KEY}`;
 
-import {
-  JupyterFrontEnd, JupyterFrontEndPlugin
-} from '@jupyterlab/application';
-
-import {
-  ToolbarButton
-} from '@jupyterlab/apputils';
-
-import {
-  DocumentRegistry
-} from '@jupyterlab/docregistry';
-
-import {
-  NotebookActions, NotebookPanel, INotebookModel
-} from '@jupyterlab/notebook';
+import { IDisposable, DisposableDelegate } from '@lumino/disposable';
+import { JupyterFrontEnd, JupyterFrontEndPlugin } from '@jupyterlab/application';
+import { NotebookPanel, INotebookModel, NotebookActions } from '@jupyterlab/notebook';
+import { DocumentRegistry } from '@jupyterlab/docregistry';
+import { ToolbarButton, sessionContextDialogs } from '@jupyterlab/apputils';
 
 
 /**
- * The plugin registration information.
+ * Notebook panel extension
  */
-const plugin: JupyterFrontEndPlugin<void> = {
-  activate,
-  id: 'my-extension-name:buttonPlugin',
-  autoStart: true
-};
+class RunAllButtons implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        // Callback of btnRunAll
+        let cbRunAll = () => {
+            NotebookActions.runAll(panel.content, context.sessionContext);
+        }
 
+        // Callback of btnRestartRunAll
+        let cbRestartRunAll = () => {
+            sessionContextDialogs.restart(panel.sessionContext).then((restarted) => {
+                if (restarted) NotebookActions.runAll(panel.content, context.sessionContext);
+            });
+        }
+	let cbInsertBelow =() =>{
+	    NotebookActions.insertBelow(panel.content); 	
+	}
 
-/**
- * A notebook widget extension that adds a button to the toolbar.
- */
-export
-class ButtonExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
-  /**
-   * Create a new extension object.
-   */
-  createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-    let callback = () => {
-      NotebookActions.runAll(panel.content, context.sessionContext);
-    };
-    let button = new ToolbarButton({
-      className: 'myButton',
-      iconClass: 'fa fa-fast-forward',
-      onClick: callback,
-      tooltip: 'Run All'
-    });
+        // Create a toolbar button
+        let btnRunAll = new ToolbarButton({
+            className: 'btnRunAll',
+            iconClass: 'wll-RunAllIcon',
+            onClick: cbRunAll,
+            tooltip: 'Run All Cells'
+        });
 
-    panel.toolbar.insertItem(0, 'runAll', button);
-    return new DisposableDelegate(() => {
-      button.dispose();
-    });
-  }
+        // Create a toolbar button
+        let btnRestartRunAll = new ToolbarButton({
+            className: 'btnRunAll',
+            iconClass: 'wll-RestartRunAllIcon',
+            onClick: cbRestartRunAll,
+            tooltip: 'Restart Kernel and Run All Cells'
+        });
+	
+	let btnInsertBelow = new ToolbarButton({
+	    className: 'btnRunAll',
+	    iconClass: 'wll-InsertBelow',
+	    onClick: cbInsertBelow,
+	    tooltip: 'Insert cell below'
+	});
+        // Insert after run
+        panel.toolbar.insertAfter('run', 'btnRunAll', btnRunAll);
+
+        // Insert after restart
+        panel.toolbar.insertAfter('restart', 'btnRestartRunAll', btnRestartRunAll);
+	
+	// Insert after restart
+	panel.toolbar.insertAfter('restart','btnInsertBelow', btnInsertBelow);
+
+        // Return a delegate which can dispose our created button
+        return new DisposableDelegate(() => {
+            btnRunAll.dispose();
+            btnRestartRunAll.dispose();
+	    btnInsertBelow.dispose();
+        });
+    }
 }
 
+
 /**
- * Activate the extension.
+ * Initialization data for the @wallneradam/run_all_buttons extension.
  */
-function activate(app: JupyterFrontEnd) {
-  app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
+const extension: JupyterFrontEndPlugin<void> = {
+    id: PLUGIN_NAME,
+    autoStart: true,
+    activate: (app: JupyterFrontEnd) => {
+        console.log(`JupyterLab extension ${PLUGIN_NAME} is activated!`);
+        // Register our extension
+        app.docRegistry.addWidgetExtension('notebook', new RunAllButtons);
+    }
 };
 
 
-/**
- * Export the plugin as default.
- */
-export default plugin;
+export default extension;
