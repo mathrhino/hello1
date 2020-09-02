@@ -1,7 +1,7 @@
 {
   "name": "@youngchae/hello1",
   "version": "0.1.0",
-  "description": "print hello world using button",
+  "description": "run all, restart kernel and run all",
   "keywords": [
     "jupyter",
     "jupyterlab",
